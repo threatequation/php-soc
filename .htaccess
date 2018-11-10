@@ -1,0 +1,6 @@
+ServerSignature Off
+Options -Indexes
+LimitRequestBody 512000
+Options -Includes
+Options -ExecCGI
+php_value session.cookie_httponly 1

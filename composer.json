@@ -1,0 +1,35 @@
+{
+    "name": "threatequation/php-soc-lite",
+    "description": "A composer plugin for php valnerable detect and protect.",
+    "keywords": [
+        "Vulnerable validate", "Vulnerable Detection"
+    ],
+    "type": "library",
+    "homepage": "http://www.threatequation.com/",
+    "authors": [
+        {
+            "name": "shahadat Hossain",
+            "email": "mshossain110@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.6.0",
+        "ezyang/htmlpurifier": "dev-master",
+        "sensiolabs/security-checker": "^4.0",
+        "raveren/kint": "^1.1",
+        "maximebf/debugbar": "^1.14"
+    },
+    "require-dev": {
+        "phpunit/phpunit" : "5.*"
+    },
+    "autoload": {
+      "psr-4":{
+        "SOCLITE\\": "lib/"
+      }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        }
+    }
+}
